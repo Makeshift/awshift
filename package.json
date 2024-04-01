@@ -1,11 +1,63 @@
 {
   "name": "awshift",
-  "module": "index.ts",
+  "version": "0.0.1",
+  "description": "A small CLI app designed to help manage AWS SSO credentials for multiple accounts",
+  "repository": "https://github.com/Makeshift/awshift",
+  "author": "Connor Bell (Makeshift)",
+  "bin": "./bin/dev.js",
+  "module": "./bin/dev.js",
   "type": "module",
-  "devDependencies": {
-    "bun-types": "latest"
+  "files": [
+    "bin",
+    "src"
+  ],
+  "oclif": {
+    "bin": "awshift",
+    "dirname": "awshift",
+    "plugins": [
+      "@oclif/plugin-help",
+      "@oclif/plugin-plugins"
+    ],
+    "commands": "./src/commands"
   },
-  "peerDependencies": {
-    "typescript": "^5.0.0"
-  }
+  "devDependencies": {
+    "@types/config": "^3.3.4",
+    "@types/ini": "^4",
+    "@types/node": "^20.12.2",
+    "@types/which": "^3.0.3",
+    "@types/winston": "^2.4.4",
+    "@typescript-eslint/eslint-plugin": "^7.4.0",
+    "@typescript-eslint/parser": "^7.4.0",
+    "eslint": "^8.57.0",
+    "eslint-config-standard-with-typescript": "^43.0.1",
+    "eslint-plugin-import": "^2.29.1",
+    "eslint-plugin-jsdoc": "^48.2.2",
+    "eslint-plugin-n": "^16.6.2",
+    "eslint-plugin-promise": "^6.1.1",
+    "eslint-plugin-unused-imports": "^3.1.0",
+    "typescript-eslint": "^7.4.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sso": "^3.540.0",
+    "@aws-sdk/credential-providers": "^3.540.0",
+    "@inquirer/confirm": "^3.1.1",
+    "@inquirer/input": "^2.1.1",
+    "@inquirer/prompts": "^4.3.1",
+    "@inquirer/select": "^2.2.1",
+    "@oclif/core": "^3.26.0",
+    "@oclif/plugin-help": "^6.0.20",
+    "@oclif/plugin-plugins": "^5.0.2",
+    "@smithy/shared-ini-file-loader": "^2.4.0",
+    "chalk": "^5.3.0",
+    "cli-highlight": "^2.1.11",
+    "color-json": "^3.0.5",
+    "config": "^3.3.11",
+    "ini": "^4.1.2",
+    "oclif": "^4.7.1",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.0.0",
+    "which": "^4.0.0",
+    "winston": "^3.13.0"
+  },
+  "packageManager": "yarn@4.0.2"
 }

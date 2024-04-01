@@ -41,13 +41,15 @@
     "skipIgnore": true,
     "experimentalSpecifierResolution": "node",
     "experimentalResolver": true,
-    "files": true,
     "preferTsExts": true,
     "pretty": true,
     "transpileOnly": true
   },
   "include": [
-    "src/**/*.ts"
+    "src/**/*.ts",
+    "bin/**/*.ts",
+    "src/**/*.js",
+    "bin/**/*.js",
   ],
   "exclude": [
     ".vscode",

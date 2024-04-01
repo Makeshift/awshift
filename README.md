@@ -30,7 +30,7 @@ A small CLI app designed to help manage AWS SSO credentials for multiple account
 
 ### For development
 
-Though this package was developed using Bun, any combination of the above 'for usage' dependencies should be sufficient.
+Any combination of the above 'for usage' dependencies should be sufficient.
 
 ## Installation
 
@@ -43,7 +43,7 @@ TODO
 ```bash
 git clone https://github.com/Makeshift/awshift.git
 cd awshift
-bun install
+yarn install
 ```
 
 ## Usage
