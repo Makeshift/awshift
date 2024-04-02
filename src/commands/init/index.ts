@@ -5,12 +5,12 @@ import { Command } from '@oclif/core'
 import { IniSectionType } from '@smithy/types'
 import chalk from 'chalk'
 import { type AwsConfigSectionTypeSsoSession } from '../../aws-config-types'
-import { AwsConfig } from '../../config'
+import { AwsConfig, AwshiftConfig } from '../../config'
 import log from '../../log'
 
 interface InitAnswers {
-  primarySsoSessionName: string
-  primarySsoSession: AwsConfigSectionTypeSsoSession
+  defaultSsoSessionProfile: string
+  defaultSsoSession: AwsConfigSectionTypeSsoSession
 }
 
 export class Init extends Command {
@@ -31,7 +31,7 @@ export class Init extends Command {
         log.verbose('User chose to re-use existing SSO session configuration')
 
         if (Object.keys(AwsConfig.ssoSessions).length > 1) {
-          this.answers.primarySsoSessionName = await select({
+          this.answers.defaultSsoSessionProfile = await select({
             message: 'awshift init can only configure one SSO session at a time. Which one would you like to configure now?',
             choices: Object.keys(AwsConfig.ssoSessions).map((name) => {
               return {
@@ -41,17 +41,17 @@ export class Init extends Command {
             })
           })
         } else {
-          this.answers.primarySsoSessionName = Object.keys(AwsConfig.ssoSessions)[0]
+          this.answers.defaultSsoSessionProfile = Object.keys(AwsConfig.ssoSessions)[0]
         }
-        this.answers.primarySsoSession = AwsConfig.ssoSessions[this.answers.primarySsoSessionName] as unknown as AwsConfigSectionTypeSsoSession
+        this.answers.defaultSsoSession = AwsConfig.ssoSessions[this.answers.defaultSsoSessionProfile] as unknown as AwsConfigSectionTypeSsoSession
       } else {
         log.verbose('User chose not to re-use existing SSO session configuration. Clearing loaded config.')
         AwsConfig.ssoSessions = {}
-        this.answers.primarySsoSessionName = await input({
+        this.answers.defaultSsoSessionProfile = await input({
           message: 'Enter a name for the new SSO session configuration'
         })
         log.info(chalk.cyan.bold('Primary SSO session configuration:'))
-        this.answers.primarySsoSession = {
+        this.answers.defaultSsoSession = {
           sso_start_url: await input({
             message: 'Enter the SSO start URL'
           }),
@@ -60,21 +60,22 @@ export class Init extends Command {
           }),
           sso_account_id: await input({
             message: 'Enter the SSO account ID\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: ''
+            default: undefined
           }),
           sso_role_name: await input({
             message: 'Enter the SSO role name\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: ''
+            default: undefined
           }),
           sso_registration_scopes: await input({
             message: 'Enter the SSO registration scopes\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: ''
+            default: undefined
           })
         }
       }
     }
-    AwsConfig.addIniSection(IniSectionType.SSO_SESSION, { [this.answers.primarySsoSessionName]: this.answers.primarySsoSession })
-    log.debug('Primary SSO session:', JSON.stringify(this.answers.primarySsoSession))
+    AwsConfig.addIniSection(IniSectionType.SSO_SESSION, { [this.answers.defaultSsoSessionProfile]: this.answers.defaultSsoSession })
+    log.debug('Primary SSO session:', JSON.stringify(this.answers.defaultSsoSession))
+    // console.log(AwshiftConfig.get())
   }
 
   async run (): Promise<void> {

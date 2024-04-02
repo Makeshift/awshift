@@ -23,5 +23,28 @@
       ],
       "outputCapture": "std"
     },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "awshift test",
+      "resolveSourceMapLocations": [
+        "**"
+      ],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": [
+        "test"
+      ],
+      "runtimeExecutable": "yarn",
+      "runtimeArgs": [
+        "ts-node-esm"
+      ],
+      "outputCapture": "std"
+    }
   ]
 }

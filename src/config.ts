@@ -1,10 +1,15 @@
+import select from '@inquirer/select'
 import { getHomeDir, getProfileName, loadSsoSessionData, parseKnownFiles } from '@smithy/shared-ini-file-loader'
 import { IniSectionType, type ParsedIniData } from '@smithy/types'
+import chalk from 'chalk'
 import { highlight } from 'cli-highlight'
+import { createPatch } from 'diff'
+import fs from 'fs/promises'
 import { stringify } from 'ini'
 import { join } from 'path'
 import { type AwsConfigSectionTypeProfile, type AwsConfigSectionTypeSsoSession } from './aws-config-types'
 import log from './log'
+import { bak } from './utils'
 
 /**
  * When instantiated, reads all available AWS config files.
@@ -107,7 +112,7 @@ export class AwsConfigClass {
    * @param prefix The prefix to add to all keys
    * @returns A new object with all keys prefixed
    */
-  private prefixKeys<T = unknown> (data: Record<string, T>, prefix: string): Record<string, T> {
+  private prefixKeys<T = unknown>(data: Record<string, T>, prefix: string): Record<string, T> {
     return Object.fromEntries(
       Object.entries(data)
         .map(([key, value]) => [`${prefix} ${key}`, value])
@@ -124,10 +129,30 @@ export class AwsConfigClass {
     if (type === IniSectionType.SSO_SESSION) {
       return this.objectToIni(this.prefixKeys(this.ssoSessions, IniSectionType.SSO_SESSION), iniOpts)
     } else if (type === IniSectionType.SERVICES) {
-      return this.objectToIni(this.prefixKeys(this.services, IniSectionType.SERVICES), iniOpts)
+      // Services is a bit weird
+      return this.renderServicesIniSection(this.prefixKeys(this.services, IniSectionType.SERVICES), iniOpts)
     } else {
       return this.objectToIni(this.prefixKeys(this.profiles, IniSectionType.PROFILE), iniOpts)
     }
+  }
+
+  /**
+   * The services section of the config file is a bit unique and requires some special handling.
+   * TODO I don't actually know if this is correct, as I don't use it, but it looks correct based on their docs.
+   * Also this function is pretty ugly to work around the default formatting for the ini package
+   * @see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#:~:text=automatic%20authentication%20refresh.-,section%20type%3A%20services,-The%20services%20section
+   * @param data
+   * @param iniOpts Options to pass to the ini package when stringifying the config
+   */
+  private renderServicesIniSection (data: Record<string, any>, iniOpts = AwsConfigClass.iniOpts): string {
+    const services = Object.fromEntries(Object.entries(structuredClone(this.services))
+      .map(([key, value]) => {
+        return [key, Object.fromEntries(Object.entries(value).map(([serviceKey, serviceValue]) => {
+          const keys = serviceKey.split('.')
+          return [keys[0] + ' =\n\t' + keys[1], serviceValue]
+        }))]
+      }))
+    return this.objectToIni(services, iniOpts)
   }
 
   /**
@@ -170,6 +195,61 @@ export class AwsConfigClass {
       this.profiles = { ...this.profiles, ...data } as Record<string, AwsConfigSectionTypeProfile>
     }
   }
+
+  async save (ask = false): Promise<void> {
+    if (ask) {
+      while (true) {
+        const answer = await select<boolean | string>({
+          message: 'Would you like to save the changes to the AWS config file?\n' + chalk.grey('(We will back up the existing file before saving. Answering no will discard changes)'),
+          choices: [
+            {
+              name: 'Save Changes',
+              value: true
+            }, {
+              name: 'Discard Changes',
+              value: false
+            }, {
+              name: 'Show Diff',
+              value: 'diff'
+            }, {
+              name: 'Print Whole Config',
+              value: 'print'
+            }
+          ]
+        })
+        if (answer === 'print') {
+          this.printFullIni()
+        } else if (answer === 'diff') {
+          const rawAwsConfigFile = await fs.readFile(this.awsConfigFilePath)
+          const diff = createPatch('config', rawAwsConfigFile.toString(), this.renderFullIni(), undefined, undefined, { ignoreWhitespace: true })
+          log.info(highlight(diff, { language: 'diff', languageSubset: ['ini'] }))
+        } else if (answer === false) {
+          return
+        } else {
+          break
+        }
+      }
+      // Make a backup of the existing config file
+      await bak(this.awsConfigFilePath)
+      fs.writeFile(this.awsConfigFilePath, this.renderFullIni())
+        .then(() => log.info('Saved changes to AWS config file at', chalk.cyan.bold(this.awsConfigFilePath)))
+        .catch((err) => log.error('Error saving changes to AWS config file:', err))
+    }
+  }
 }
 
 export const AwsConfig = await new AwsConfigClass().load()
+
+// export interface IAwshiftConfig {
+//   defaultSsoSessionProfile: string
+// }
+
+// export const AwshiftConfig = convict<IAwshiftConfig>({
+//   defaultSsoSessionProfile: {
+//     doc: 'The name of the default SSO session to use for all commands (Created during awshift init)',
+//     format: String,
+//     env: 'AWSHIFT_DEFAULT_SSO_SESSION_PROFILE',
+//     default: 'default'
+//   }
+// }).loadFile(join(dirname(AwsConfig.awsConfigFilePath), 'awshift.json5'))
+//   .validate({ output: log.warn })
