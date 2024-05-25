@@ -60,3 +60,27 @@ function isSystemError (error: unknown): error is NodeJS.ErrnoException {
 
   return typeof errno === 'number' && getSystemErrorMap().has(errno)
 }
+
+/**
+ * This type is useful for debugging. If you want to see what a type resolves to, you can use this type to get the type of the type.
+ * @example export type MyType = Expand<SomeType>
+ * You can then hover over MyType to see what SomeType resolves to.
+ * @template T The type to expand
+ */
+export type Expand<T> = T extends (...args: infer A) => infer R
+  ? (...args: Expand<A>) => Expand<R>
+  : T extends infer O
+    ? { [K in keyof O]: O[K] }
+    : never
+
+/**
+ * Like Expand, but expands recursively.
+ * @template T The type to expand
+ */
+export type ExpandRecursively<T> = T extends (...args: infer A) => infer R
+  ? (...args: ExpandRecursively<A>) => ExpandRecursively<R>
+  : T extends object
+    ? T extends infer O
+      ? { [K in keyof O]: ExpandRecursively<O[K]> }
+      : never
+    : T

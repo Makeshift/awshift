@@ -4,29 +4,23 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "awshift init",
+      "name": "Run tests",
       "resolveSourceMapLocations": [
         "**"
       ],
-      "env": {
-        "LOG_LEVEL": "debug"
-      },
+      "env": {},
       "console": "integratedTerminal",
       "sourceMaps": true,
-      "program": "${workspaceFolder}/bin/dev.js",
       "args": [
-        "init"
+        "test"
       ],
       "runtimeExecutable": "yarn",
-      "runtimeArgs": [
-        "ts-node-esm"
-      ],
-      "outputCapture": "std"
+      "outputCapture": "console"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "awshift test",
+      "name": "awshift init",
       "resolveSourceMapLocations": [
         "**"
       ],
@@ -38,11 +32,39 @@
       "sourceMaps": true,
       "program": "${workspaceFolder}/bin/dev.js",
       "args": [
-        "test"
+        "init",
+        "--sso-start-url=https://herp.com"
       ],
-      "runtimeExecutable": "yarn",
       "runtimeArgs": [
-        "ts-node-esm"
+        "--loader=ts-node/esm",
+        "--experimental-specifier-resolution=node",
+        "--no-warnings"
+      ],
+      "outputCapture": "std"
+    },
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "awshift new sso-profile --help",
+      "resolveSourceMapLocations": [
+        "**"
+      ],
+      "env": {
+        "LOG_LEVEL": "debug",
+        "DEBUG": "*"
+      },
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "program": "${workspaceFolder}/bin/dev.js",
+      "args": [
+        "new",
+        "sso-profile",
+        "--help"
+      ],
+      "runtimeArgs": [
+        "--loader=ts-node/esm",
+        "--experimental-specifier-resolution=node",
+        "--no-warnings"
       ],
       "outputCapture": "std"
     }

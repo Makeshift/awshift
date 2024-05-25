@@ -1,85 +1,83 @@
-import confirm from '@inquirer/confirm'
-import input from '@inquirer/input'
-import select from '@inquirer/select'
+import select, { Separator } from '@inquirer/select'
 import { Command } from '@oclif/core'
 import { IniSectionType } from '@smithy/types'
 import chalk from 'chalk'
-import { type AwsConfigSectionTypeSsoSession } from '../../aws-config-types'
-import { AwsConfig, AwshiftConfig } from '../../config'
+import { AwsConfig } from '../../config'
 import log from '../../log'
+import { createNewSsoProfileQuestions, SetupNewSsoProfile } from '../new/sso-profile'
 
-interface InitAnswers {
-  defaultSsoSessionProfile: string
-  defaultSsoSession: AwsConfigSectionTypeSsoSession
-}
-
+/**
+ * The init command is used to perform initial setup and generate configuration used
+ * to retrieve AWS credentials.
+ */
 export class Init extends Command {
   static description = 'Perform initial setup and generate configuration'
 
-  answers: InitAnswers = {} as InitAnswers
+  flags = {
+    ...createNewSsoProfileQuestions.flags
+  }
 
-  async setupPrimarySso (): Promise<void> {
-    if (Object.keys(AwsConfig.ssoSessions).length) {
-      log.verbose('User has existing SSO session config')
-      log.info(chalk.cyan.bold('Existing SSO session configurations:'))
-      AwsConfig.printIniSection(IniSectionType.SSO_SESSION)
+  async hasExistingSsoSessionConfig (): Promise<string> {
+    log.verbose('User has existing SSO session config')
+    log.info(chalk.cyan.bold('Existing SSO session configurations:'))
+    AwsConfig.printIniSection(IniSectionType.SSO_SESSION)
 
-      if (await confirm({
-        message: 'You appear to have existing SSO session configurations. Would you like re-use them?\n' + chalk.grey('(Answering no will clear existing SSO configurations)'),
-        default: true
-      })) {
-        log.verbose('User chose to re-use existing SSO session configuration')
-
-        if (Object.keys(AwsConfig.ssoSessions).length > 1) {
-          this.answers.defaultSsoSessionProfile = await select({
-            message: 'awshift init can only configure one SSO session at a time. Which one would you like to configure now?',
-            choices: Object.keys(AwsConfig.ssoSessions).map((name) => {
-              return {
-                name,
-                value: name
-              }
-            })
-          })
-        } else {
-          this.answers.defaultSsoSessionProfile = Object.keys(AwsConfig.ssoSessions)[0]
-        }
-        this.answers.defaultSsoSession = AwsConfig.ssoSessions[this.answers.defaultSsoSessionProfile] as unknown as AwsConfigSectionTypeSsoSession
-      } else {
-        log.verbose('User chose not to re-use existing SSO session configuration. Clearing loaded config.')
-        AwsConfig.ssoSessions = {}
-        this.answers.defaultSsoSessionProfile = await input({
-          message: 'Enter a name for the new SSO session configuration'
-        })
-        log.info(chalk.cyan.bold('Primary SSO session configuration:'))
-        this.answers.defaultSsoSession = {
-          sso_start_url: await input({
-            message: 'Enter the SSO start URL'
-          }),
-          sso_region: await input({
-            message: 'Enter the SSO region'
-          }),
-          sso_account_id: await input({
-            message: 'Enter the SSO account ID\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: undefined
-          }),
-          sso_role_name: await input({
-            message: 'Enter the SSO role name\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: undefined
-          }),
-          sso_registration_scopes: await input({
-            message: 'Enter the SSO registration scopes\n' + chalk.grey('(Optional - hit enter to skip)'),
-            default: undefined
-          })
-        }
+    // Ask the user if they want to re-use one, or clear them all.
+    const existingOptions = Object.entries(AwsConfig.ssoSessions).map(([name, value]) => {
+      return {
+        name,
+        value: name,
+        description: chalk.grey(value.sso_start_url)
       }
+    })
+    const specialOptions = {
+      clearAll: Symbol('Clear all existing SSO session configurations'),
+      addNew: Symbol('Add a new SSO session configuration')
     }
-    AwsConfig.addIniSection(IniSectionType.SSO_SESSION, { [this.answers.defaultSsoSessionProfile]: this.answers.defaultSsoSession })
-    log.debug('Primary SSO session:', JSON.stringify(this.answers.defaultSsoSession))
-    // console.log(AwshiftConfig.get())
+    const reUseExisting = await select<string | symbol>({
+      message: 'You appear to have existing SSO session configurations.\nAwshift can work with multiple configurations, but init is done with one SSO session configuration at a time.\nPick the one you would like to init now.\n' + chalk.grey("(Answering 'Clear' will clear all existing SSO configurations)"),
+      choices: [
+        ...existingOptions,
+        new Separator(),
+        {
+          name: 'New',
+          description: 'Add a new SSO session configuration',
+          value: specialOptions.addNew
+        },
+        {
+          name: 'Clear',
+          description: 'Clear all existing SSO session configurations and add a new one',
+          value: specialOptions.clearAll
+        }
+      ]
+    })
+
+    if (reUseExisting === specialOptions.clearAll || reUseExisting === specialOptions.addNew) {
+      if (reUseExisting === specialOptions.clearAll) {
+        log.verbose('User chose to clear existing SSO session configurations')
+        AwsConfig.ssoSessions = {}
+      }
+      log.verbose('User chose to add a new SSO session configuration')
+      return await this.createNewSsoProfile()
+    } else if (typeof reUseExisting === 'string') {
+      log.verbose('User chose to re-use existing SSO session configuration', reUseExisting)
+      return reUseExisting
+    }
+    return await this.hasExistingSsoSessionConfig()
+  }
+
+  async createNewSsoProfile (): Promise<string> {
+    return await SetupNewSsoProfile.run(this.argv)
   }
 
   async run (): Promise<void> {
     log.verbose('Running init command')
-    await this.setupPrimarySso()
+    let selectedSsoProfile: string
+    if (Object.keys(AwsConfig.ssoSessions).length) {
+      selectedSsoProfile = await this.hasExistingSsoSessionConfig()
+    } else {
+      selectedSsoProfile = await this.createNewSsoProfile()
+    }
+    log.info('Selected SSO profile:', selectedSsoProfile)
   }
 }

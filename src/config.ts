@@ -143,6 +143,7 @@ export class AwsConfigClass {
    * @see https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-files.html#:~:text=automatic%20authentication%20refresh.-,section%20type%3A%20services,-The%20services%20section
    * @param data
    * @param iniOpts Options to pass to the ini package when stringifying the config
+   * @returns The rendered 'services' ini section as a string
    */
   private renderServicesIniSection (data: Record<string, any>, iniOpts = AwsConfigClass.iniOpts): string {
     const services = Object.fromEntries(Object.entries(structuredClone(this.services))
@@ -161,8 +162,14 @@ export class AwsConfigClass {
    * @param iniOpts Options to pass to the ini package when stringifying the config
    * @returns The rendered ini section as a string
    */
-  objectToIni (input: Record<string, unknown>, iniOpts = AwsConfigClass.iniOpts): string {
+  objectToIni (input: Record<any, any>, iniOpts = AwsConfigClass.iniOpts): string {
     return stringify(input, iniOpts)
+  }
+
+  printObjectAsIni (input: Record<any, any>, iniOpts = AwsConfigClass.iniOpts): void {
+    const rendered = this.objectToIni(input, iniOpts)
+    log.debug(rendered)
+    console.log(highlight(rendered, { language: 'ini' }))
   }
 
   /**
@@ -186,7 +193,7 @@ export class AwsConfigClass {
     console.log(highlight(rendered, { language: 'ini' }))
   }
 
-  addIniSection (type: IniSectionType, data: Record<string, unknown>): void {
+  addIniSection (type: IniSectionType, data: Record<string, AwsConfigSectionTypeSsoSession | AwsConfigSectionTypeProfile | Record<string, string | undefined>>): void {
     if (type === IniSectionType.SSO_SESSION) {
       this.ssoSessions = { ...this.ssoSessions, ...data } as Record<string, AwsConfigSectionTypeSsoSession>
     } else if (type === IniSectionType.SERVICES) {
@@ -196,8 +203,10 @@ export class AwsConfigClass {
     }
   }
 
-  async save (ask = false): Promise<void> {
+  async save (ask = false): Promise<boolean> {
+    log.debug('Starting save...')
     if (ask) {
+      log.debug('Asking user if they want to save changes...')
       while (true) {
         const answer = await select<boolean | string>({
           message: 'Would you like to save the changes to the AWS config file?\n' + chalk.grey('(We will back up the existing file before saving. Answering no will discard changes)'),
@@ -218,23 +227,32 @@ export class AwsConfigClass {
           ]
         })
         if (answer === 'print') {
+          log.debug('Printing full ini file')
           this.printFullIni()
         } else if (answer === 'diff') {
+          log.debug('Showing diff of changes')
           const rawAwsConfigFile = await fs.readFile(this.awsConfigFilePath)
           const diff = createPatch('config', rawAwsConfigFile.toString(), this.renderFullIni(), undefined, undefined, { ignoreWhitespace: true })
           log.info(highlight(diff, { language: 'diff', languageSubset: ['ini'] }))
         } else if (answer === false) {
-          return
+          log.debug('User chose to discard changes')
+          return false
         } else {
           break
         }
       }
-      // Make a backup of the existing config file
-      await bak(this.awsConfigFilePath)
-      fs.writeFile(this.awsConfigFilePath, this.renderFullIni())
-        .then(() => log.info('Saved changes to AWS config file at', chalk.cyan.bold(this.awsConfigFilePath)))
-        .catch((err) => log.error('Error saving changes to AWS config file:', err))
     }
+    // Make a backup of the existing config file
+    await bak(this.awsConfigFilePath)
+    try {
+      log.verbose('Saving changes to AWS config file at', chalk.cyan.bold(this.awsConfigFilePath))
+      await fs.writeFile(this.awsConfigFilePath, this.renderFullIni())
+    } catch (e) {
+      log.error('Error saving changes to AWS config file:', e)
+      return false
+    }
+    log.info('Saved changes to AWS config file at', chalk.cyan.bold(this.awsConfigFilePath))
+    return true
   }
 }
 

@@ -7,7 +7,7 @@ A small CLI app designed to help manage AWS SSO credentials for multiple account
 **Core**:
 
 - [ ] Log in to AWS SSO
-- [ ] Generate ~/.aws/config for SSO session
+- [X] Generate ~/.aws/config for SSO session
 - [ ] Generate profiles with selectable roles for each account
 - [ ] Easy to edit config file with the above settings
 - [ ] Support refreshing legacy credentials (a la [yawsso](https://github.com/victorskl/yawsso))
@@ -15,9 +15,10 @@ A small CLI app designed to help manage AWS SSO credentials for multiple account
 
 **Optional Extras**:
 
-- [ ] Generate EKS cluster configs for each account
-- [ ] Log in to ECR in each account
-- [ ] Log in to CodeArtifact
+- [ ] Plugin support, and plugins for:
+  - [ ] Generate EKS cluster configs for each account
+  - [ ] Log in to ECR in each account
+  - [ ] Log in to CodeArtifact
 - [ ] CLI autocomplete
 
 ## Dependencies

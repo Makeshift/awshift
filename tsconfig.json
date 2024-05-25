@@ -32,7 +32,8 @@
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
     "types": [
-      "node"
+      "node",
+      "mocha"
     ],
     "noErrorTruncation": true
   },
@@ -46,10 +47,10 @@
     "transpileOnly": true
   },
   "include": [
+    "eslint.config.js",
     "src/**/*.ts",
-    "bin/**/*.ts",
-    "src/**/*.js",
     "bin/**/*.js",
+    "test/**/*.ts"
   ],
   "exclude": [
     ".vscode",

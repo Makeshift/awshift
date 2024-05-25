@@ -16,11 +16,15 @@
 // }
 
 import { Command } from '@oclif/core'
+import { confirm } from '@inquirer/prompts'
 
-export class Init extends Command {
+export class Login extends Command {
   static description = 'Placeholder'
 
-  async run (): Promise<void> {
-    throw new Error('Not implemented')
+  async run (): Promise<boolean> {
+    const result = await confirm({
+      message: 'Does this work?'
+    })
+    return result
   }
 }
